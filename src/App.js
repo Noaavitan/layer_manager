@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
+import { useLocalStorageState } from "./useLocalStorage";
 
 const layerData = [
   {
-    imdbID: "tt1375666",
+    LayerID: "tt1375666",
     Title: "שם שכבה 1",
-    inCharge: "פדם/ענף/מדור",
+    inCharge: "ירקון/ענף/מדור",
     Poster: `https://cdn1.vectorstock.com/i/1000x1000/50/90/layers-panel-dark-mode-glyph-ui-icon-vector-43805090.jpg`,
     Description: "השכבה נועדה ל... עבור ... ומיצצגת ...",
     entity: 148,
   },
   {
-    imdbID: "tt0133093",
+    LayerID: "tt0133093",
     Title: "שם שכבה 2",
     inCharge: "פדם/ענף/מדור",
     Poster: `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYoMzNxjIqxE1kfYmxa0Diw8eNyDPooKJLwAd44XTOf9LuvcyRpQKOMIKlPDhFvp-fWx0&usqp=CAU`,
@@ -18,7 +19,7 @@ const layerData = [
     entity: 120,
   },
   {
-    imdbID: "tt6751668",
+    LayerID: "tt6751668",
     Title: "שם שכבה 3",
     inCharge: "פדם/ענף/מדור",
     Poster: `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYoMzNxjIqxE1kfYmxa0Diw8eNyDPooKJLwAd44XTOf9LuvcyRpQKOMIKlPDhFvp-fWx0&usqp=CAU`,
@@ -27,17 +28,15 @@ const layerData = [
   },
 ];
 
-const average = (arr) =>
-  arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 const sum = (arr) => arr.reduce((acc, cur, i, arr) => acc + cur, 0);
 export default function App() {
   const [query, setQuery] = useState("");
   const [layer, setLayer] = useState(layerData);
-  const [saved, setSaved] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [saved, setSaved] = useLocalStorageState([]);
 
   const savedLayers = layerData.filter((layer) =>
-    saved.some((savedLayer) => savedLayer.imdbID === layer.imdbID)
+    saved.some((savedLayer) => savedLayer.LayerID === layer.LayerID)
   );
 
   function handleSelectLayer(id) {
@@ -49,12 +48,13 @@ export default function App() {
   }
 
   function handleAddSaved(layer) {
+    // // Update the state
     setSaved((saved) => [...saved, layer]);
 
     // Update the saved property for the corresponding layer in layerData
     setLayer((prevLayers) =>
       prevLayers.map((prevLayer) =>
-        prevLayer.imdbID === layer.imdbID
+        prevLayer.LayerID === layer.LayerID
           ? { ...prevLayer, saved: true }
           : prevLayer
       )
@@ -62,12 +62,15 @@ export default function App() {
   }
 
   function handleDeleteSaved(id) {
-    setSaved((saved) => saved.filter((layer) => layer.imdbID !== id));
+    savedLayers.filter((layer) => layer.LayerID !== id);
+
+    // Update the state
+    setSaved((saved) => saved.filter((layer) => layer.LayerID !== id));
 
     // Update the saved property for the corresponding layer in layerData
     setLayer((prevLayers) =>
       prevLayers.map((prevLayer) =>
-        prevLayer.imdbID === id ? { ...prevLayer, saved: false } : prevLayer
+        prevLayer.LayerID === id ? { ...prevLayer, saved: false } : prevLayer
       )
     );
   }
@@ -79,6 +82,13 @@ export default function App() {
         <Resulte layer={layer} />
       </Navbar>
       <Main>
+        <Box>
+          <LayerList
+            layer={layer}
+            handleSelectLayer={handleSelectLayer}
+            query={query}
+          />
+        </Box>
         <Box>
           {selectedId ? (
             <LayerDetails
@@ -93,18 +103,11 @@ export default function App() {
             <>
               <SavedSummary saved={saved} />
               <SavedLayerList
-                saved={savedLayers}
+                saved={saved}
                 handleDeleteSaved={handleDeleteSaved}
               />
             </>
           )}
-        </Box>
-        <Box>
-          <LayerList
-            layer={layer}
-            handleSelectLayer={handleSelectLayer}
-            query={query}
-          />
         </Box>
       </Main>
     </>
@@ -129,7 +132,7 @@ function Search({ query, setQuery }) {
       <input
         className="search"
         type="text"
-        placeholder="Search Layers..."
+        placeholder="חפש לפי שכבה/ענף/מדור..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -173,13 +176,15 @@ function Box({ children }) {
 }
 
 function LayerList({ layer, handleSelectLayer, query }) {
-  const filteredLayers = layer.filter((lyr) => lyr.Title.includes(query));
+  const filteredLayers = layer.filter(
+    (lyr) => lyr.Title.includes(query) || lyr.inCharge.includes(query)
+  );
   return (
     <ul className="list list-layers">
       {filteredLayers?.map((lyr) => (
         <Layer
           lyr={lyr}
-          key={lyr.imdbID}
+          key={lyr.LayerID}
           handleSelectLayer={handleSelectLayer}
         />
       ))}
@@ -189,7 +194,7 @@ function LayerList({ layer, handleSelectLayer, query }) {
 
 function Layer({ lyr, handleSelectLayer }) {
   return (
-    <li onClick={() => handleSelectLayer(lyr.imdbID)}>
+    <li onClick={() => handleSelectLayer(lyr.LayerID)}>
       <img src={lyr.Poster} alt={`${lyr.Title} poster`} />
       <h3>{lyr.Title}</h3>
       <div>
@@ -224,9 +229,9 @@ function LayerDetails({
     },
     [handleCloseLayer]
   );
-  const isSaved = saved.map((save) => save.imdbID).includes(selectedId);
+  const isSaved = saved.map((save) => save.LayerID).includes(selectedId);
 
-  const selectedLayer = layerData.find((layer) => layer.imdbID === selectedId);
+  const selectedLayer = layerData.find((layer) => layer.LayerID === selectedId);
 
   if (!selectedLayer) {
     // Handle the case where the selected layer is not found
@@ -245,7 +250,7 @@ function LayerDetails({
 
   function handleAdd() {
     const SelectedLayer = {
-      imdbID: selectedId,
+      LayerID: selectedId,
       title,
       year,
       poster,
@@ -315,7 +320,7 @@ function SavedLayerList({ saved, handleDeleteSaved }) {
         {saved.map((lyr) => (
           <SavedLayer
             lyr={lyr}
-            key={lyr.imdbID}
+            key={lyr.LayerID}
             handleDeleteSaved={handleDeleteSaved}
           />
         ))}
@@ -326,7 +331,7 @@ function SavedLayerList({ saved, handleDeleteSaved }) {
 
 function SavedLayer({ lyr, handleDeleteSaved }) {
   return (
-    <li key={lyr.imdbID}>
+    <li key={lyr.LayerID}>
       <img src={lyr.Poster} alt={`${lyr.Title} poster`} />
       <h3>{lyr.Title}</h3>
       <div>
@@ -336,7 +341,7 @@ function SavedLayer({ lyr, handleDeleteSaved }) {
         </p>
         <button
           className="btn-delete"
-          onClick={() => handleDeleteSaved(lyr.imdbID)}
+          onClick={() => handleDeleteSaved(lyr.LayerID)}
         >
           -
         </button>
