@@ -51,8 +51,8 @@ body {
 }
 
 .box {
-  width: 42rem;
-  max-width: 42rem;
+  width: 55rem;
+  max-width: 60rem;
   background-color: var(--color-background-500);
   border-radius: 0.9rem;
   overflow: auto;
@@ -74,7 +74,9 @@ body {
 }
 
 /* ******* */
-
+span {
+  font-size: 1.4rem;
+}
 .logo {
   display: flex;
   align-items: flex-end;
@@ -82,7 +84,7 @@ body {
 }
 
 .logo span {
-  font-size: 3.2rem;
+  font-size: 1rem;
 }
 
 .logo h1 {

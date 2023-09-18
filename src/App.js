@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocalStorageState } from "./useLocalStorage";
+import { useKey } from "./useKey";
 
 const layerData = [
   {
@@ -9,6 +10,7 @@ const layerData = [
     Poster: `https://cdn1.vectorstock.com/i/1000x1000/50/90/layers-panel-dark-mode-glyph-ui-icon-vector-43805090.jpg`,
     Description: "השכבה נועדה ל... עבור ... ומיצצגת ...",
     entity: 148,
+    dateUpdate: "23.04.2023",
   },
   {
     LayerID: "tt0133093",
@@ -17,6 +19,7 @@ const layerData = [
     Poster: `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYoMzNxjIqxE1kfYmxa0Diw8eNyDPooKJLwAd44XTOf9LuvcyRpQKOMIKlPDhFvp-fWx0&usqp=CAU`,
     Description: "השכבה נועדה ל... עבור ... ומיצצגת ...",
     entity: 120,
+    dateUpdate: "23.04.2023",
   },
   {
     LayerID: "tt6751668",
@@ -25,6 +28,7 @@ const layerData = [
     Poster: `https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYoMzNxjIqxE1kfYmxa0Diw8eNyDPooKJLwAd44XTOf9LuvcyRpQKOMIKlPDhFvp-fWx0&usqp=CAU`,
     Description: "השכבה נועדה ל... עבור ... ומיצצגת ...",
     entity: 18,
+    dateUpdate: "23.04.2023",
   },
 ];
 
@@ -34,7 +38,9 @@ export default function App() {
   const [layer, setLayer] = useState(layerData);
   const [selectedId, setSelectedId] = useState(null);
   const [saved, setSaved] = useLocalStorageState([]);
-
+  const filteredLayers = layer.filter(
+    (lyr) => lyr.Title.includes(query) || lyr.inCharge.includes(query)
+  );
   const savedLayers = layerData.filter((layer) =>
     saved.some((savedLayer) => savedLayer.LayerID === layer.LayerID)
   );
@@ -79,7 +85,7 @@ export default function App() {
     <>
       <Navbar>
         <Search query={query} setQuery={setQuery} />
-        <Resulte layer={layer} />
+        <Resulte filteredLayers={filteredLayers} />
       </Navbar>
       <Main>
         <Box>
@@ -87,6 +93,7 @@ export default function App() {
             layer={layer}
             handleSelectLayer={handleSelectLayer}
             query={query}
+            filteredLayers={filteredLayers}
           />
         </Box>
         <Box>
@@ -127,6 +134,13 @@ function Navbar({ children }) {
 }
 
 function Search({ query, setQuery }) {
+  const inputEl = useRef(null);
+  useKey("Enter", function () {
+    if (document.activeElement === inputEl.current) return;
+    inputEl.current.focus();
+    setQuery("");
+  });
+
   return (
     <>
       <input
@@ -135,6 +149,7 @@ function Search({ query, setQuery }) {
         placeholder="חפש לפי שכבה/ענף/מדור..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        ref={inputEl}
       />
     </>
   );
@@ -150,11 +165,11 @@ function Logo() {
   );
 }
 
-function Resulte({ layer }) {
+function Resulte({ filteredLayers }) {
   return (
     <>
       <p className="num-results">
-        נמצאו <strong>{layer?.length}</strong> שכבות
+        נמצאו <strong>{filteredLayers?.length}</strong> שכבות
       </p>
     </>
   );
@@ -175,10 +190,7 @@ function Box({ children }) {
   );
 }
 
-function LayerList({ layer, handleSelectLayer, query }) {
-  const filteredLayers = layer.filter(
-    (lyr) => lyr.Title.includes(query) || lyr.inCharge.includes(query)
-  );
+function LayerList({ layer, handleSelectLayer, query, filteredLayers }) {
   return (
     <ul className="list list-layers">
       {filteredLayers?.map((lyr) => (
@@ -201,6 +213,7 @@ function Layer({ lyr, handleSelectLayer }) {
         <p>
           <span>{lyr.inCharge}</span>
           <span>| {lyr.entity} :מס ישויות</span>
+          <span>| {lyr.dateUpdate} :תאריך עדכון אחרון</span>
         </p>
       </div>
     </li>
@@ -214,24 +227,9 @@ function LayerDetails({
   saved,
   layerData,
 }) {
-  useEffect(
-    function () {
-      function callback(e) {
-        if (e.code === "Escape") {
-          handleCloseLayer();
-        }
-      }
-
-      document.addEventListener("keydown", callback);
-      return function () {
-        document.removeEventListener("keydown", callback);
-      };
-    },
-    [handleCloseLayer]
-  );
   const isSaved = saved.map((save) => save.LayerID).includes(selectedId);
-
   const selectedLayer = layerData.find((layer) => layer.LayerID === selectedId);
+  useKey("Escape", handleCloseLayer);
 
   if (!selectedLayer) {
     // Handle the case where the selected layer is not found
@@ -246,6 +244,7 @@ function LayerDetails({
     inCharge: inCharge,
     entity: entity,
     Description: description,
+    dateUpdate: dateUpdate,
   } = selectedLayer;
 
   function handleAdd() {
@@ -257,6 +256,7 @@ function LayerDetails({
       inCharge,
       entity,
       description,
+      dateUpdate,
     };
     handleAddSaved(SelectedLayer);
     handleCloseLayer();
@@ -272,6 +272,7 @@ function LayerDetails({
         <div className="details-overview">
           <h2>{title}</h2>
           <h3>{inCharge}</h3>
+          <h3>{dateUpdate}</h3>
           <h3>{entity} :מס ישויות</h3>
         </div>
       </header>
@@ -332,12 +333,13 @@ function SavedLayerList({ saved, handleDeleteSaved }) {
 function SavedLayer({ lyr, handleDeleteSaved }) {
   return (
     <li key={lyr.LayerID}>
-      <img src={lyr.Poster} alt={`${lyr.Title} poster`} />
-      <h3>{lyr.Title}</h3>
+      <img src={lyr.poster} alt={`${lyr.title} poster`} />
+      <h3>{lyr.title}</h3>
       <div>
         <p>
           <span>{lyr.inCharge}</span>
           <span>| {lyr.entity} :מס ישויות</span>
+          <span>| {lyr.dateUpdate} :תאריך עדכון אחרון</span>
         </p>
         <button
           className="btn-delete"
